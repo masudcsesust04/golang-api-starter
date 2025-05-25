@@ -5,16 +5,12 @@ import (
 	"net/http/httptest"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 )
 
 // Claims represents the JWT claims
-type Claims struct {
-	UserID int `json:"user_id"`
-	jwt.RegisteredClaims
-}
-
 func TestJWTMiddleware(t *testing.T) {
 	// Set the JWT_SECRET environment variable for testing
 	os.Setenv("JWT_SECRET", "testsecretkey")
@@ -26,8 +22,9 @@ func TestJWTMiddleware(t *testing.T) {
 		w.Write([]byte("OK"))
 	})
 
+	jwtSecretKey := os.Getenv("JWT_SECRET")
 	// Wrap the test handler with JWTMiddleware
-	handler := JWTMiddleware(testHandler)
+	handler := JWTMiddleware(testHandler, jwtSecretKey)
 
 	// Test cases
 	tests := []struct {
@@ -52,7 +49,7 @@ func TestJWTMiddleware(t *testing.T) {
 		},
 		{
 			name:           "Valid token",
-			authHeader:     "Bearer " + generateTestToken(t, "testsecretkey"),
+			authHeader:     "Bearer " + generateTestToken(t, jwtSecretKey),
 			expectedStatus: http.StatusOK,
 		},
 	}
@@ -74,14 +71,15 @@ func TestJWTMiddleware(t *testing.T) {
 
 func generateTestToken(t *testing.T, secret string) string {
 	t.Helper()
-	claims := &Claims{
-		UserID:           123,
-		RegisteredClaims: jwt.RegisteredClaims{},
+	claims := jwt.MapClaims{
+		"user_id": 1,
+		"exp":     time.Now().Add(time.Hour).Unix(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	tokenString, err := token.SignedString([]byte(secret))
 	if err != nil {
 		t.Fatalf("Failed to generate test token: %v", err)
 	}
+
 	return tokenString
 }

@@ -19,7 +19,7 @@ var (
 )
 
 // JWTMiddleware is a middleware to validate JWT token in Authorization header
-func JWTMiddleware(next http.HandlerFunc) http.HandlerFunc {
+func JWTMiddleware(next http.HandlerFunc, jwtSecret string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
@@ -33,7 +33,7 @@ func JWTMiddleware(next http.HandlerFunc) http.HandlerFunc {
 		}
 
 		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-		if string(JWTSecretKey) == "" {
+		if string(jwtSecret) == "" {
 			http.Error(w, "Server configuration error", http.StatusInternalServerError)
 			return
 		}
@@ -42,7 +42,7 @@ func JWTMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 			}
-			return []byte(JWTSecretKey), nil
+			return []byte(jwtSecret), nil
 		})
 
 		if err != nil || !token.Valid {

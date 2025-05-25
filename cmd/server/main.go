@@ -20,9 +20,9 @@ func main() {
 		log.Fatal("Error loading .env file")
 	}
 
-	apiKey := os.Getenv("JWT_SECRET")
+	jwtSecretKey := os.Getenv("JWT_SECRET")
 	databaseURL := os.Getenv("DATABASE_URL")
-	fmt.Println("JWT SECRET Key:", apiKey)
+	fmt.Println("JWT SECRET Key:", jwtSecretKey)
 	fmt.Println("Database URL:", databaseURL)
 
 	if databaseURL == "" {
@@ -43,15 +43,15 @@ func main() {
 
 	// Auth routes
 	router.HandleFunc("/login", userHandler.Login).Methods("POST")
-	router.HandleFunc("/logout", utils.JWTMiddleware(userHandler.Logout)).Methods("POST")
+	router.HandleFunc("/logout", utils.JWTMiddleware(userHandler.Logout, jwtSecretKey)).Methods("POST")
 	router.HandleFunc("/token/refresh", userHandler.RefreshToken).Methods("POST")
 
 	// user routes
-	router.HandleFunc("/users", utils.JWTMiddleware(userHandler.GetUsers)).Methods("GET")
+	router.HandleFunc("/users", utils.JWTMiddleware(userHandler.GetUsers, jwtSecretKey)).Methods("GET")
 	router.HandleFunc("/users", userHandler.CreateUsers).Methods("POST")
-	router.HandleFunc("/users/{id}", utils.JWTMiddleware(userHandler.GetUser)).Methods("GET")
-	router.HandleFunc("/users/{id}", utils.JWTMiddleware(userHandler.UpdateUser)).Methods("PUT")
-	router.HandleFunc("/users/{id}", utils.JWTMiddleware(userHandler.DeleteUser)).Methods("DELETE")
+	router.HandleFunc("/users/{id}", utils.JWTMiddleware(userHandler.GetUser, jwtSecretKey)).Methods("GET")
+	router.HandleFunc("/users/{id}", utils.JWTMiddleware(userHandler.UpdateUser, jwtSecretKey)).Methods("PUT")
+	router.HandleFunc("/users/{id}", utils.JWTMiddleware(userHandler.DeleteUser, jwtSecretKey)).Methods("DELETE")
 
 	// Start server
 	addr := ":8080"
