@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/masudcsesust04/golang-jwt-auth/internal/db"
+	"github.com/masudcsesust04/golang-jwt-auth/internal/models"
 	"github.com/masudcsesust04/golang-jwt-auth/internal/utils"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -45,7 +45,7 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.DB.GetUserByEmail(req.Email)
+	user, err := h.dbImpl.GetUserByEmail(req.Email)
 	if err != nil || user == nil {
 		fmt.Println(err)
 		http.Error(w, err.Error(), http.StatusUnauthorized)
@@ -71,14 +71,14 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	hashSecureToken, _ := utils.HashToken(rawSecureToken)
-	refreshToken := &db.RefreshToken{
+	refreshToken := &models.RefreshToken{
 		UserID:    user.ID,
 		Token:     hashSecureToken,
 		ExpiresAt: time.Now().Add(7 * 24 * time.Hour),
 		CreatedAt: time.Now(),
 	}
 
-	err = h.DB.CreateRefreshToken(refreshToken)
+	err = h.dbImpl.CreateRefreshToken(refreshToken)
 	if err != nil {
 		fmt.Printf("Error creating refresh token: %v\n", err)
 		http.Error(w, "Failed to create refresh token", http.StatusInternalServerError)
@@ -111,7 +111,7 @@ func (h *UserHandler) Logout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := h.DB.DeleteRefreshToken(req.UserID)
+	err := h.dbImpl.DeleteRefreshToken(req.UserID)
 	if err != nil {
 		http.Error(w, "Failed to logout: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -132,7 +132,7 @@ func (h *UserHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	refreshToken, err := h.DB.GetRefreshToken(req.UserID)
+	refreshToken, err := h.dbImpl.GetRefreshToken(req.UserID)
 	if err != nil {
 		http.Error(w, "Invalid refresh token", http.StatusUnauthorized)
 		return

@@ -1,8 +1,10 @@
-package db
+package models
 
 import (
 	"testing"
 	"time"
+
+	"github.com/masudcsesust04/golang-jwt-auth/internal/config"
 )
 
 func TestCreateAndGetUser(t *testing.T) {
@@ -15,7 +17,7 @@ func TestCreateAndGetUser(t *testing.T) {
 		Password:    "password123",
 	}
 
-	err := testDB.CreateUser(user)
+	err := config.DB.GetPool().CreateUser(user)
 	if err != nil {
 		t.Fatalf("CreateUser failed: %v", err)
 	}

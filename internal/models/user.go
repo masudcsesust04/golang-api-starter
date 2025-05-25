@@ -1,10 +1,11 @@
-package db
+package models
 
 import (
 	"context"
 	"fmt"
 	"time"
 
+	"github.com/masudcsesust04/golang-jwt-auth/internal/config"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -32,11 +33,11 @@ type RefreshToken struct {
 }
 
 // GetUserByEmail retr4ieves a user by email
-func (db *DB) GetUserByEmail(email string) (*User, error) {
+func (u *User) GetUserByEmail(email string) (*User, error) {
 	query := `SELECT id, first_name, last_name, phone_number, email, password_hash, status, created_at, updated_at FROM  users WHERE email = $1`
 	user := &User{}
 
-	err := db.pool.QueryRow(context.Background(), query, email).Scan(&user.ID, &user.FirstName, &user.LastName, &user.PhoneNumber, &user.Email, &user.PasswordHash, &user.Status, &user.CreatedAt, &user.UpdatedAt)
+	err := config.DbConn.GetPool().QueryRow(context.Background(), query, email).Scan(&user.ID, &user.FirstName, &user.LastName, &user.PhoneNumber, &user.Email, &user.PasswordHash, &user.Status, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user by email: %w", err)
 	}
@@ -45,7 +46,7 @@ func (db *DB) GetUserByEmail(email string) (*User, error) {
 }
 
 // CreateUser inserts a new user into the database with password hashing
-func (db *DB) CreateUser(user *User) error {
+func (u *User) CreateUser(user *User) error {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return fmt.Errorf("failed to hash password: %w", err)
@@ -54,7 +55,7 @@ func (db *DB) CreateUser(user *User) error {
 	user.PasswordHash = string(hashedPassword)
 
 	query := `INSERT INTO users (first_name, last_name, phone_number, email, status, password_hash) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, created_at, updated_at`
-	err = db.pool.QueryRow(context.Background(), query, user.FirstName, user.LastName, user.PhoneNumber, user.Email, user.Status, user.PasswordHash).Scan(&user.ID, &user.CreatedAt, &user.UpdatedAt)
+	err = config.DbConn.GetPool().QueryRow(context.Background(), query, user.FirstName, user.LastName, user.PhoneNumber, user.Email, user.Status, user.PasswordHash).Scan(&user.ID, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		return fmt.Errorf("failed to create user: %w", err)
 	}
@@ -63,11 +64,11 @@ func (db *DB) CreateUser(user *User) error {
 }
 
 // GetUserByID retrives a user by ID
-func (db *DB) GetUserByID(id int64) (*User, error) {
+func (u *User) GetUserByID(id int64) (*User, error) {
 	query := `SELECT id, first_name, last_name, phone_number, email, status, created_at, updated_at FROM  users WHERE id = $1`
 	user := &User{}
 
-	err := db.pool.QueryRow(context.Background(), query, id).Scan(&user.ID, &user.FirstName, &user.LastName, &user.PhoneNumber, &user.Email, &user.Status, &user.CreatedAt, &user.UpdatedAt)
+	err := config.DbConn.GetPool().QueryRow(context.Background(), query, id).Scan(&user.ID, &user.FirstName, &user.LastName, &user.PhoneNumber, &user.Email, &user.Status, &user.CreatedAt, &user.UpdatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user by id: %w", err)
 	}
@@ -76,10 +77,10 @@ func (db *DB) GetUserByID(id int64) (*User, error) {
 }
 
 // GetAllUsers retrives all users from the database
-func (db *DB) GetAllUsers() ([]*User, error) {
+func (u *User) GetAllUsers() ([]*User, error) {
 	query := `SELECT id, first_name, last_name, phone_number, email, status, created_at, updated_at FROM  users`
 
-	rows, err := db.pool.Query(context.Background(), query)
+	rows, err := config.DbConn.GetPool().Query(context.Background(), query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get users: %w", err)
 	}
@@ -105,9 +106,9 @@ func (db *DB) GetAllUsers() ([]*User, error) {
 }
 
 // UpdateUser updates an existing users' information
-func (db *DB) UpdateUser(user *User) error {
+func (u *User) UpdateUser(user *User) error {
 	query := `UPDATE users SET first_name = $1, last_name = $2, phone_number = $3, email = $4, status= $5 WHERE id = $6`
-	_, err := db.pool.Exec(context.Background(), query, user.FirstName, user.LastName, user.PhoneNumber, user.Email, user.Status, user.ID)
+	_, err := config.DbConn.GetPool().Exec(context.Background(), query, user.FirstName, user.LastName, user.PhoneNumber, user.Email, user.Status, user.ID)
 	if err != nil {
 		return fmt.Errorf("failed to update user: %w", err)
 	}
@@ -116,9 +117,9 @@ func (db *DB) UpdateUser(user *User) error {
 }
 
 // DeleteUser deletes a user by ID
-func (db *DB) DeleteUser(id int64) error {
+func (u *User) DeleteUser(id int64) error {
 	query := `DELETE FROM users WHERE ID = $1`
-	_, err := db.pool.Exec(context.Background(), query, id)
+	_, err := config.DbConn.GetPool().Exec(context.Background(), query, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete user: %w", err)
 	}
@@ -127,9 +128,9 @@ func (db *DB) DeleteUser(id int64) error {
 }
 
 // CreateRefreshToken inserts a new refresh token into the database
-func (db *DB) CreateRefreshToken(rt *RefreshToken) error {
+func (u *User) CreateRefreshToken(rt *RefreshToken) error {
 	query := `INSERT INTO refresh_tokens (user_id, token, expires_at, created_at) VALUES ($1, $2, $3, $4) RETURNING id`
-	err := db.pool.QueryRow(context.Background(), query, rt.UserID, rt.Token, rt.ExpiresAt, rt.CreatedAt).Scan(&rt.ID)
+	err := config.DbConn.GetPool().QueryRow(context.Background(), query, rt.UserID, rt.Token, rt.ExpiresAt, rt.CreatedAt).Scan(&rt.ID)
 	if err != nil {
 		return fmt.Errorf("failed to create refresh token: %w", err)
 	}
@@ -138,10 +139,10 @@ func (db *DB) CreateRefreshToken(rt *RefreshToken) error {
 }
 
 // GetRefreshToken inserts a new refresh token into the database
-func (db *DB) GetRefreshToken(userID int64) (*RefreshToken, error) {
+func (u *User) GetRefreshToken(userID int64) (*RefreshToken, error) {
 	query := `SELECT * FROM refresh_tokens WHERE user_id = $1 AND expires_at > NOW() ORDER BY id DESC LIMIT 1`
 	rt := &RefreshToken{}
-	err := db.pool.QueryRow(context.Background(), query, userID).Scan(&rt.ID, &rt.UserID, &rt.Token, &rt.ExpiresAt, &rt.CreatedAt)
+	err := config.DbConn.GetPool().QueryRow(context.Background(), query, userID).Scan(&rt.ID, &rt.UserID, &rt.Token, &rt.ExpiresAt, &rt.CreatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get refresh token: %w", err)
 	}
@@ -150,9 +151,9 @@ func (db *DB) GetRefreshToken(userID int64) (*RefreshToken, error) {
 }
 
 // DeleteRefreshToken delete refresh token by user_id
-func (db *DB) DeleteRefreshToken(userId int64) error {
+func (u *User) DeleteRefreshToken(userId int64) error {
 	query := `DELETE FROM refresh_tokens WHERE user_id = $1`
-	_, err := db.pool.Exec(context.Background(), query, userId)
+	_, err := config.DbConn.GetPool().Exec(context.Background(), query, userId)
 	if err != nil {
 		return fmt.Errorf("failed to refresh token: %w", err)
 	}

@@ -1,4 +1,4 @@
-package db
+package config
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-var testDB *DB
+var testDB *Database
 
 func TestMain(m *testing.M) {
 	databaseURL := os.Getenv("TEST_DATABASE_URL")
@@ -22,7 +22,7 @@ func TestMain(m *testing.M) {
 	}
 
 	// Clean tabels before running tests
-	_, err = testDB.pool.Exec(context.Background(), "TRUNCATE TABLES transactions, wallets, refresh_tokens, users RESTART IDENTITY CASCADE")
+	_, err = testDB.pool.Exec(context.Background(), "TRUNCATE TABLE refresh_tokens, users RESTART IDENTITY CASCADE")
 	if err != nil {
 		panic("failed to truncate tables: " + err.Error())
 	}

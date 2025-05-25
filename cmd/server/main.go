@@ -8,8 +8,9 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
-	"github.com/masudcsesust04/golang-jwt-auth/internal/db"
+	"github.com/masudcsesust04/golang-jwt-auth/internal/config"
 	"github.com/masudcsesust04/golang-jwt-auth/internal/handlers"
+	"github.com/masudcsesust04/golang-jwt-auth/internal/models"
 	"github.com/masudcsesust04/golang-jwt-auth/internal/utils"
 )
 
@@ -29,29 +30,32 @@ func main() {
 		log.Fatal("DATABASE_URL environment variable is not set")
 	}
 
-	dbConn, err := db.NewDB(databaseURL)
+	err = config.InitDB(databaseURL)
 	if err != nil {
 		log.Fatalf("failed to connect to database: %w", err)
 	}
-	defer dbConn.Close()
+	defer config.DbConn.Close()
 
 	// Initialize user handler
-	userHandler := handlers.NewUserHandler(dbConn)
+	userHandler := handlers.NewUserHandler(&models.User{})
+
+	// Initialize JWT middleware
+	utils.SetJWTSecrectKey(jwtSecretKey)
 
 	// Setup router
 	router := mux.NewRouter()
 
 	// Auth routes
 	router.HandleFunc("/login", userHandler.Login).Methods("POST")
-	router.HandleFunc("/logout", utils.JWTMiddleware(userHandler.Logout, jwtSecretKey)).Methods("POST")
+	router.HandleFunc("/logout", utils.JWTMiddleware(userHandler.Logout)).Methods("POST")
 	router.HandleFunc("/token/refresh", userHandler.RefreshToken).Methods("POST")
 
 	// user routes
-	router.HandleFunc("/users", utils.JWTMiddleware(userHandler.GetUsers, jwtSecretKey)).Methods("GET")
 	router.HandleFunc("/users", userHandler.CreateUsers).Methods("POST")
-	router.HandleFunc("/users/{id}", utils.JWTMiddleware(userHandler.GetUser, jwtSecretKey)).Methods("GET")
-	router.HandleFunc("/users/{id}", utils.JWTMiddleware(userHandler.UpdateUser, jwtSecretKey)).Methods("PUT")
-	router.HandleFunc("/users/{id}", utils.JWTMiddleware(userHandler.DeleteUser, jwtSecretKey)).Methods("DELETE")
+	router.HandleFunc("/users", utils.JWTMiddleware(userHandler.GetUsers)).Methods("GET")
+	router.HandleFunc("/users/{id}", utils.JWTMiddleware(userHandler.GetUser)).Methods("GET")
+	router.HandleFunc("/users/{id}", utils.JWTMiddleware(userHandler.UpdateUser)).Methods("PUT")
+	router.HandleFunc("/users/{id}", utils.JWTMiddleware(userHandler.DeleteUser)).Methods("DELETE")
 
 	// Start server
 	addr := ":8080"

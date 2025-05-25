@@ -5,21 +5,18 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/masudcsesust04/golang-jwt-auth/internal/db"
+	"github.com/masudcsesust04/golang-jwt-auth/internal/models"
 	"golang.org/x/crypto/bcrypt"
 )
 
-var (
-	JWTSecretKey = []byte(os.Getenv("JWT_SECRET"))
-)
+var jwtSecretKey string
 
 // JWTMiddleware is a middleware to validate JWT token in Authorization header
-func JWTMiddleware(next http.HandlerFunc, jwtSecret string) http.HandlerFunc {
+func JWTMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		authHeader := r.Header.Get("Authorization")
 		if authHeader == "" {
@@ -33,7 +30,7 @@ func JWTMiddleware(next http.HandlerFunc, jwtSecret string) http.HandlerFunc {
 		}
 
 		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-		if string(jwtSecret) == "" {
+		if string(jwtSecretKey) == "" {
 			http.Error(w, "Server configuration error", http.StatusInternalServerError)
 			return
 		}
@@ -42,7 +39,7 @@ func JWTMiddleware(next http.HandlerFunc, jwtSecret string) http.HandlerFunc {
 			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 			}
-			return []byte(jwtSecret), nil
+			return []byte(jwtSecretKey), nil
 		})
 
 		if err != nil || !token.Valid {
@@ -61,7 +58,7 @@ func GenerateAccessToken(userID int64) (string, error) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(JWTSecretKey)
+	return token.SignedString([]byte(jwtSecretKey))
 }
 
 func GenerateRefreshToken() string {
@@ -75,7 +72,7 @@ func GenerateRefreshToken() string {
 	return base64.URLEncoding.EncodeToString(b)
 }
 
-func ValidateRefreshToken(refreshToken *db.RefreshToken) error {
+func ValidateRefreshToken(refreshToken *models.RefreshToken) error {
 	if time.Now().After(refreshToken.ExpiresAt) {
 		return fmt.Errorf("refresh token has expired")
 	}
@@ -100,4 +97,8 @@ func HashToken(token string) (string, error) {
 
 func CompareToken(hash, token string) error {
 	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(token))
+}
+
+func SetJWTSecrectKey(secret string) {
+	jwtSecretKey = secret
 }
