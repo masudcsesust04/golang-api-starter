@@ -1,11 +1,19 @@
 package models
 
 import (
+	"os"
 	"testing"
 	"time"
 
 	"github.com/masudcsesust04/golang-jwt-auth/internal/config"
 )
+
+func TestMain(m *testing.M) {
+	cleanup := config.SetupTestDB(m)
+	defer cleanup()
+
+	os.Exit(m.Run())
+}
 
 func TestCreateAndGetUser(t *testing.T) {
 	user := &User{
@@ -17,13 +25,13 @@ func TestCreateAndGetUser(t *testing.T) {
 		Password:    "password123",
 	}
 
-	err := config.DB.GetPool().CreateUser(user)
+	err := user.CreateUser(user)
 	if err != nil {
 		t.Fatalf("CreateUser failed: %v", err)
 	}
 
 	// Use GetUserByEmail instead of GetUserByUsername
-	gotUser, err := testDB.GetUserByEmail(user.Email)
+	gotUser, err := user.GetUserByEmail(user.Email)
 	if err != nil {
 		t.Fatalf("GetUserByEmail failed: %v", err)
 	}
@@ -42,18 +50,18 @@ func TestUpdateUser(t *testing.T) {
 		Password:    "password123",
 	}
 
-	err := testDB.CreateUser(user)
+	err := user.CreateUser(user)
 	if err != nil {
 		t.Fatalf("CreateUser failed: %v", err)
 	}
 
 	user.Email = "newemail@example.com"
-	err = testDB.UpdateUser(user)
+	err = user.UpdateUser(user)
 	if err != nil {
 		t.Fatalf("UpdateUser failed: %v", err)
 	}
 
-	updatedUser, err := testDB.GetUserByID(user.ID)
+	updatedUser, err := user.GetUserByID(user.ID)
 	if err != nil {
 		t.Fatalf("GetUserByID failed: %v", err)
 	}
@@ -72,17 +80,17 @@ func TestDeleteUser(t *testing.T) {
 		Password:    "password123",
 	}
 
-	err := testDB.CreateUser(user)
+	err := user.CreateUser(user)
 	if err != nil {
 		t.Fatalf("CreateUser failed: %v", err)
 	}
 
-	err = testDB.DeleteUser(user.ID)
+	err = user.DeleteUser(user.ID)
 	if err != nil {
 		t.Fatalf("DeleteUser failed: %v", err)
 	}
 
-	deletedUser, err := testDB.GetUserByID(user.ID)
+	deletedUser, err := user.GetUserByID(user.ID)
 	if err == nil && deletedUser != nil {
 		t.Fatalf("DeleteUser did not delete user")
 	}
@@ -97,7 +105,7 @@ func TestCreateAndDeleteRefreshToken(t *testing.T) {
 		Password:    "password123",
 	}
 
-	err := testDB.CreateUser(user)
+	err := user.CreateUser(user)
 	if err != nil {
 		t.Fatalf("CreateUser failed: %v", err)
 	}
@@ -109,12 +117,12 @@ func TestCreateAndDeleteRefreshToken(t *testing.T) {
 		CreatedAt: time.Now(),
 	}
 
-	err = testDB.CreateRefreshToken(rt)
+	err = user.CreateRefreshToken(rt)
 	if err != nil {
 		t.Fatalf("CreateRefreshToken failed: %v", err)
 	}
 
-	gotRT, err := testDB.GetRefreshToken(rt.UserID)
+	gotRT, err := user.GetRefreshToken(rt.UserID)
 	if err != nil {
 		t.Fatalf("GetRefreshToken failed: %v", err)
 	}
@@ -122,19 +130,20 @@ func TestCreateAndDeleteRefreshToken(t *testing.T) {
 		t.Fatalf("GetRefreshToken returned wrong token")
 	}
 
-	err = testDB.DeleteRefreshToken(rt.UserID)
+	err = user.DeleteRefreshToken(rt.UserID)
 	if err != nil {
 		t.Fatalf("DeleteRefreshToken failed: %v", err)
 	}
 
-	deletedRT, err := testDB.GetRefreshToken(rt.UserID)
+	deletedRT, err := user.GetRefreshToken(rt.UserID)
 	if err == nil && deletedRT != nil {
 		t.Fatalf("DeleteRefreshToken did not delete token")
 	}
 }
 
 func TestGetAllUsers(t *testing.T) {
-	users, err := testDB.GetAllUsers()
+	user := &User{}
+	users, err := user.GetAllUsers()
 	if err != nil {
 		t.Fatalf("GetAllUsers failed: %v", err)
 	}

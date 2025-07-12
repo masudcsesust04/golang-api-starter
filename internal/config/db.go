@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -18,8 +19,17 @@ var DbConn *DbConnect
 // NewDB creates a new database connection using pgxpool
 func InitDB(databaseURL string) error {
 	ctx := context.Background()
-	pool, err := pgxpool.New(ctx, databaseURL)
 
+	config, err := pgxpool.ParseConfig(databaseURL)
+	if err != nil {
+		return fmt.Errorf("failed to parse database URL: %w", err)
+	}
+
+	config.MaxConns = AppConfig.MaxConns
+	config.MinConns = AppConfig.MinConns
+	config.MaxConnLifetime = time.Duration(AppConfig.MaxConnLifetime) * time.Second
+
+	pool, err := pgxpool.NewWithConfig(ctx, config)
 	if err != nil {
 		return fmt.Errorf("failed to create connection pool: %w", err)
 	}

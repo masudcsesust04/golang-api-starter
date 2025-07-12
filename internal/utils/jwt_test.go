@@ -22,9 +22,10 @@ func TestJWTMiddleware(t *testing.T) {
 		w.Write([]byte("OK"))
 	})
 
-	jwtSecretKey := os.Getenv("JWT_SECRET")
+	jwtSecretKey := "testsecretkey"
+	SetJWTSecrectKey(jwtSecretKey)
 	// Wrap the test handler with JWTMiddleware
-	handler := JWTMiddleware(testHandler, jwtSecretKey)
+	handler := JWTMiddleware(testHandler)
 
 	// Test cases
 	tests := []struct {

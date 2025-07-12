@@ -1,104 +1,125 @@
 package handlers
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/masudcsesust04/golang-jwt-auth/internal/db"
+	"github.com/gorilla/mux"
+	"github.com/masudcsesust04/golang-jwt-auth/internal/mocks"
+	"github.com/masudcsesust04/golang-jwt-auth/internal/models"
+	"github.com/stretchr/testify/assert"
+	
 )
 
-type mockDB struct {
-	users []*db.User
-}
-
-func (m *mockDB) GetAllUsers() ([]*db.User, error) {
-	return m.users, nil
-}
-
-func (m *mockDB) GetUserByEmail(email string) (*db.User, error) {
-	for _, u := range m.users {
-		if u.Email == email {
-			return u, nil
-		}
-	}
-	return nil, nil
-}
-
-func (m *mockDB) CreateUser(user *db.User) error {
-	m.users = append(m.users, user)
-	return nil
-}
-
-func (m *mockDB) GetUserByID(id int64) (*db.User, error) {
-	for _, u := range m.users {
-		if u.ID == id {
-			return u, nil
-		}
-	}
-	return nil, nil
-}
-
-func (m *mockDB) UpdateUser(user *db.User) error {
-	for i, u := range m.users {
-		if u.ID == user.ID {
-			m.users[i] = user
-			return nil
-		}
-	}
-	return nil
-}
-
-func (m *mockDB) DeleteUser(id int64) error {
-	for i, u := range m.users {
-		if u.ID == id {
-			m.users = append(m.users[:i], m.users[i+1:]...)
-			return nil
-		}
-	}
-	return nil
-}
-
-func (m *mockDB) CreateRefreshToken(rt *db.RefreshToken) error {
-	return nil
-}
-
-func (m *mockDB) DeleteRefreshToken(userID int64) error {
-	return nil
-}
-
-func (m *mockDB) GetRefreshToken(userID int64) (*db.RefreshToken, error) {
-	return nil, nil
-}
-
 func TestGetUsers(t *testing.T) {
-	mockUsers := []*db.User{
+	mockDB := new(mocks.MockDB)
+	handler := NewUserHandler(nil)
+	handler.dbImpl = mockDB
+
+	users := []*models.User{
 		{ID: 1, FirstName: "User1", LastName: "Test", Email: "user1@example.com"},
 		{ID: 2, FirstName: "User2", LastName: "Test", Email: "user2@example.com"},
 	}
-	mockDB := &mockDB{users: mockUsers}
-	handler := NewUserHandler(nil)
-	handler.DB = mockDB
+
+	mockDB.On("GetAllUsers").Return(users, nil)
 
 	req := httptest.NewRequest("GET", "/users", nil)
 	w := httptest.NewRecorder()
 
 	handler.GetUsers(w, req)
 
-	resp := w.Result()
-	defer resp.Body.Close()
+	assert.Equal(t, http.StatusOK, w.Code)
 
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("expected status 200 OK, got %d", resp.StatusCode)
-	}
+	var returnedUsers []*models.User
+	json.Unmarshal(w.Body.Bytes(), &returnedUsers)
 
-	var users []*db.User
-	if err := json.NewDecoder(resp.Body).Decode(&users); err != nil {
-		t.Fatalf("failed to decode response: %v", err)
-	}
+	assert.Equal(t, users, returnedUsers)
+	mockDB.AssertExpectations(t)
+}
 
-	if len(users) != len(mockUsers) {
-		t.Fatalf("expected %d users, got %d", len(mockUsers), len(users))
-	}
+func TestCreateUser(t *testing.T) {
+	mockDB := new(mocks.MockDB)
+	handler := NewUserHandler(nil)
+	handler.dbImpl = mockDB
+
+	user := &models.User{FirstName: "New", LastName: "User", Email: "new@example.com", Password: "password123", Status: "active", PhoneNumber: "+1234567890"}
+
+	mockDB.On("CreateUser", user).Return(nil)
+
+	jsonBody, _ := json.Marshal(user)
+	req := httptest.NewRequest("POST", "/users", bytes.NewBuffer(jsonBody))
+	w := httptest.NewRecorder()
+
+	handler.CreateUsers(w, req)
+
+	assert.Equal(t, http.StatusCreated, w.Code)
+	mockDB.AssertExpectations(t)
+}
+
+func TestGetUser(t *testing.T) {
+	mockDB := new(mocks.MockDB)
+	handler := NewUserHandler(nil)
+	handler.dbImpl = mockDB
+
+	user := &models.User{ID: 1, FirstName: "User1", LastName: "Test", Email: "user1@example.com"}
+
+	mockDB.On("GetUserByID", int64(1)).Return(user, nil)
+
+	req := httptest.NewRequest("GET", "/users/1", nil)
+	w := httptest.NewRecorder()
+
+	// Need to use mux router to handle path variables
+	router := mux.NewRouter()
+	router.HandleFunc("/users/{id}", handler.GetUser)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var returnedUser models.User
+	json.Unmarshal(w.Body.Bytes(), &returnedUser)
+
+	assert.Equal(t, *user, returnedUser)
+	mockDB.AssertExpectations(t)
+}
+
+func TestUpdateUser(t *testing.T) {
+	mockDB := new(mocks.MockDB)
+	handler := NewUserHandler(nil)
+	handler.dbImpl = mockDB
+
+	user := &models.User{ID: 1, FirstName: "Updated", LastName: "User", Email: "updated@example.com"}
+
+	mockDB.On("UpdateUser", user).Return(nil)
+
+	jsonBody, _ := json.Marshal(user)
+	req := httptest.NewRequest("PUT", "/users/1", bytes.NewBuffer(jsonBody))
+	w := httptest.NewRecorder()
+
+	router := mux.NewRouter()
+	router.HandleFunc("/users/{id}", handler.UpdateUser)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	mockDB.AssertExpectations(t)
+}
+
+func TestDeleteUser(t *testing.T) {
+	mockDB := new(mocks.MockDB)
+	handler := NewUserHandler(nil)
+	handler.dbImpl = mockDB
+
+	mockDB.On("DeleteUser", int64(1)).Return(nil)
+
+	req := httptest.NewRequest("DELETE", "/users/1", nil)
+	w := httptest.NewRecorder()
+
+	router := mux.NewRouter()
+	router.HandleFunc("/users/{id}", handler.DeleteUser)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusNoContent, w.Code)
+	mockDB.AssertExpectations(t)
 }

@@ -47,6 +47,10 @@ func (u *User) GetUserByEmail(email string) (*User, error) {
 
 // CreateUser inserts a new user into the database with password hashing
 func (u *User) CreateUser(user *User) error {
+	// Ensure status is valid before creating user
+	if user.Status != "active" && user.Status != "inactive" && user.Status != "banned" {
+		user.Status = "active" // Default to active if invalid
+	}
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return fmt.Errorf("failed to hash password: %w", err)

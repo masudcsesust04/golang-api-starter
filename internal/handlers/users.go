@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/masudcsesust04/golang-jwt-auth/internal/models"
+	"github.com/masudcsesust04/golang-jwt-auth/internal/utils"
 )
 
 type UserDBInterface interface {
@@ -47,6 +49,12 @@ func (h *UserHandler) CreateUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Validate the user struct
+	if validationErrors := utils.ValidateStruct(user); validationErrors != nil {
+		http.Error(w, "Validation failed: "+strings.Join(validationErrors, ", "), http.StatusBadRequest)
+		return
+	}
+
 	err := h.dbImpl.CreateUser(&user)
 	if err != nil {
 		http.Error(w, "Failed to create user: "+err.Error(), http.StatusInternalServerError)
@@ -59,12 +67,10 @@ func (h *UserHandler) CreateUsers(w http.ResponseWriter, r *http.Request) {
 
 // GetUser handle GET /users/{id}
 func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	userIdStr := vars["id"]
-	id, err := strconv.ParseInt(userIdStr, 10, 64)
-
+	id, err := getUserIdFromRequest(r)
 	if err != nil {
 		http.Error(w, "Invalid user id", http.StatusBadRequest)
+		return
 	}
 
 	user, err := h.dbImpl.GetUserByID(id)
@@ -82,11 +88,10 @@ func (h *UserHandler) GetUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	userIdStr := vars["id"]
-	id, err := strconv.ParseInt(userIdStr, 10, 64)
+	id, err := getUserIdFromRequest(r)
 	if err != nil {
 		http.Error(w, "Invalid user id", http.StatusBadRequest)
+		return
 	}
 
 	var user models.User
@@ -106,11 +111,10 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	userIdStr := vars["id"]
-	id, err := strconv.ParseInt(userIdStr, 10, 64)
+	id, err := getUserIdFromRequest(r)
 	if err != nil {
 		http.Error(w, "Invalid user id", http.StatusBadRequest)
+		return
 	}
 
 	err = h.dbImpl.DeleteUser(id)
@@ -121,3 +125,10 @@ func (h *UserHandler) DeleteUser(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusNoContent)
 }
+
+func getUserIdFromRequest(r *http.Request) (int64, error) {
+	vars := mux.Vars(r)
+	userIdStr := vars["id"]
+	return strconv.ParseInt(userIdStr, 10, 64)
+}
+
