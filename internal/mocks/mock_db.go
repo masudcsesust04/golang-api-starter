@@ -34,7 +34,7 @@ func (m *MockDB) GetUserByEmail(email string) (*models.User, error) {
 	return args.Get(0).(*models.User), args.Error(1)
 }
 
-func (m *MockDB) CreateUser(user *models.User) error {
+func (m *MockDB) RegisterUser(user *models.User) error {
 	args := m.Called(user)
 	return args.Error(0)
 }

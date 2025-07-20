@@ -11,7 +11,6 @@ import (
 	"github.com/masudcsesust04/golang-jwt-auth/internal/mocks"
 	"github.com/masudcsesust04/golang-jwt-auth/internal/models"
 	"github.com/stretchr/testify/assert"
-	
 )
 
 func TestGetUsers(t *testing.T) {
@@ -37,25 +36,6 @@ func TestGetUsers(t *testing.T) {
 	json.Unmarshal(w.Body.Bytes(), &returnedUsers)
 
 	assert.Equal(t, users, returnedUsers)
-	mockDB.AssertExpectations(t)
-}
-
-func TestCreateUser(t *testing.T) {
-	mockDB := new(mocks.MockDB)
-	handler := NewUserHandler(nil)
-	handler.dbImpl = mockDB
-
-	user := &models.User{FirstName: "New", LastName: "User", Email: "new@example.com", Password: "password123", Status: "active", PhoneNumber: "+1234567890"}
-
-	mockDB.On("CreateUser", user).Return(nil)
-
-	jsonBody, _ := json.Marshal(user)
-	req := httptest.NewRequest("POST", "/users", bytes.NewBuffer(jsonBody))
-	w := httptest.NewRecorder()
-
-	handler.CreateUsers(w, req)
-
-	assert.Equal(t, http.StatusCreated, w.Code)
 	mockDB.AssertExpectations(t)
 }
 

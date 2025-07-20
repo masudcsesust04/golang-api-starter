@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -12,6 +13,14 @@ import (
 	"github.com/masudcsesust04/golang-jwt-auth/internal/utils"
 	"golang.org/x/crypto/bcrypt"
 )
+
+type AuthDBInterface interface {
+	RegisterUser(user *models.User) error
+	GetUserByEmail(email string) (*models.User, error)
+	CreateRefreshToken(refreshToken *models.RefreshToken) error
+	GetRefreshToken(userID int64) (*models.RefreshToken, error)
+	DeleteRefreshToken(userID int64) error
+}
 
 // LoginRequest represents the login request payload
 type LoginRequest struct {
@@ -33,8 +42,44 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-// Login handles POST /login
-func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
+type AuthHandler struct {
+	dbImpl AuthDBInterface
+}
+
+func NewAuthHandler(user *models.User) *AuthHandler {
+	return &AuthHandler{dbImpl: user}
+}
+
+// Register handles POST /auth/register
+func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
+	var user models.User
+
+	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
+		http.Error(w, "Invalid request payload", http.StatusInternalServerError)
+		return
+	}
+
+	// Validate the user struct
+	if validationErrors := utils.ValidateStruct(user); validationErrors != nil {
+		http.Error(w, "Validation failed: "+strings.Join(validationErrors, ", "), http.StatusBadRequest)
+		return
+	}
+
+	err := h.dbImpl.RegisterUser(&user)
+	if err != nil {
+		http.Error(w, "Failed to create user: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "User registered successfully.",
+	})
+}
+
+// Login handles POST /auth/login
+func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Email    string `json:"email"`
 		Password string `json:"password"`
@@ -96,36 +141,13 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(resp)
 }
 
-// Logout handles POST /logout
-func (h *UserHandler) Logout(w http.ResponseWriter, r *http.Request) {
-	// For logout, typically the client deletes the tokens.
-	// Here, we expect the user_id in the request body to delete refresh token from DB.
-
-	type LogoutRequest struct {
-		UserID int64 `json:"user_id"`
-	}
-
-	var req LogoutRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request payload", http.StatusBadRequest)
-		return
-	}
-
-	err := h.dbImpl.DeleteRefreshToken(req.UserID)
-	if err != nil {
-		http.Error(w, "Failed to logout: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusNoContent)
-}
-
 type RefreshRequest struct {
 	UserID       int64  `json:"user_id"`
 	RefreshToken string `json:"refresh_token"`
 }
 
-func (h *UserHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
+// RefreshToken handles POST /token/refresh
+func (h *AuthHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 	var req RefreshRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request", http.StatusBadRequest)
@@ -155,8 +177,33 @@ func (h *UserHandler) RefreshToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Optionally rotate refresh token here
+	// TODO: Optionally rotate refresh token here and update expire_at
+	// response with new refresh token
 	json.NewEncoder(w).Encode(map[string]string{
 		"access_token": accessToken,
 	})
+}
+
+// Logout handles POST /auth/logout
+func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	// For logout, typically the client deletes the tokens.
+	// Here, we expect the user_id in the request body to delete refresh token from DB.
+
+	type LogoutRequest struct {
+		UserID int64 `json:"user_id"`
+	}
+
+	var req LogoutRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		return
+	}
+
+	err := h.dbImpl.DeleteRefreshToken(req.UserID)
+	if err != nil {
+		http.Error(w, "Failed to logout: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }

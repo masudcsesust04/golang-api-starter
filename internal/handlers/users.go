@@ -4,23 +4,16 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/gorilla/mux"
 	"github.com/masudcsesust04/golang-jwt-auth/internal/models"
-	"github.com/masudcsesust04/golang-jwt-auth/internal/utils"
 )
 
 type UserDBInterface interface {
 	GetAllUsers() ([]*models.User, error)
 	GetUserByID(id int64) (*models.User, error)
-	GetUserByEmail(emaio string) (*models.User, error)
-	CreateUser(user *models.User) error
 	UpdateUser(user *models.User) error
 	DeleteUser(id int64) error
-	CreateRefreshToken(refreshToken *models.RefreshToken) error
-	GetRefreshToken(userID int64) (*models.RefreshToken, error)
-	DeleteRefreshToken(userID int64) error
 }
 
 type UserHandler struct {
@@ -39,30 +32,6 @@ func (h *UserHandler) GetUsers(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(users)
-}
-
-func (h *UserHandler) CreateUsers(w http.ResponseWriter, r *http.Request) {
-	var user models.User
-
-	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
-		http.Error(w, "Invalid request payload", http.StatusInternalServerError)
-		return
-	}
-
-	// Validate the user struct
-	if validationErrors := utils.ValidateStruct(user); validationErrors != nil {
-		http.Error(w, "Validation failed: "+strings.Join(validationErrors, ", "), http.StatusBadRequest)
-		return
-	}
-
-	err := h.dbImpl.CreateUser(&user)
-	if err != nil {
-		http.Error(w, "Failed to create user: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(user)
 }
 
 // GetUser handle GET /users/{id}
@@ -131,4 +100,3 @@ func getUserIdFromRequest(r *http.Request) (int64, error) {
 	userIdStr := vars["id"]
 	return strconv.ParseInt(userIdStr, 10, 64)
 }
-

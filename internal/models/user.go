@@ -34,6 +34,7 @@ type RefreshToken struct {
 
 // GetUserByEmail retr4ieves a user by email
 func (u *User) GetUserByEmail(email string) (*User, error) {
+	fmt.Println("Getting user by email:", email)
 	query := `SELECT id, first_name, last_name, phone_number, email, password_hash, status, created_at, updated_at FROM  users WHERE email = $1`
 	user := &User{}
 
@@ -46,7 +47,7 @@ func (u *User) GetUserByEmail(email string) (*User, error) {
 }
 
 // CreateUser inserts a new user into the database with password hashing
-func (u *User) CreateUser(user *User) error {
+func (u *User) RegisterUser(user *User) error {
 	// Ensure status is valid before creating user
 	if user.Status != "active" && user.Status != "inactive" && user.Status != "banned" {
 		user.Status = "active" // Default to active if invalid

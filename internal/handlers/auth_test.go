@@ -11,13 +11,32 @@ import (
 	"github.com/masudcsesust04/golang-jwt-auth/internal/mocks"
 	"github.com/masudcsesust04/golang-jwt-auth/internal/models"
 	"github.com/stretchr/testify/assert"
-	mock "github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/mock"
 	"golang.org/x/crypto/bcrypt"
 )
 
+func TestRegister(t *testing.T) {
+	mockDB := new(mocks.MockDB)
+	handler := NewAuthHandler(nil)
+	handler.dbImpl = mockDB
+
+	user := &models.User{FirstName: "New", LastName: "User", Email: "new@example.com", Password: "password123", Status: "active", PhoneNumber: "+1234567890"}
+
+	mockDB.On("CreateUser", user).Return(nil)
+
+	jsonBody, _ := json.Marshal(user)
+	req := httptest.NewRequest("POST", "/users", bytes.NewBuffer(jsonBody))
+	w := httptest.NewRecorder()
+
+	handler.Register(w, req)
+
+	assert.Equal(t, http.StatusCreated, w.Code)
+	mockDB.AssertExpectations(t)
+}
+
 func TestLogin(t *testing.T) {
 	mockDB := new(mocks.MockDB)
-	handler := NewUserHandler(nil)
+	handler := NewAuthHandler(nil)
 	handler.dbImpl = mockDB
 
 	// Mock user data
@@ -49,7 +68,7 @@ func TestLogin(t *testing.T) {
 
 func TestRefreshToken(t *testing.T) {
 	mockDB := new(mocks.MockDB)
-	handler := NewUserHandler(nil)
+	handler := NewAuthHandler(nil)
 	handler.dbImpl = mockDB
 
 	// Mock refresh token data

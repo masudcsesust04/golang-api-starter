@@ -25,7 +25,7 @@ func TestCreateAndGetUser(t *testing.T) {
 		Password:    "password123",
 	}
 
-	err := user.CreateUser(user)
+	err := user.RegisterUser(user)
 	if err != nil {
 		t.Fatalf("CreateUser failed: %v", err)
 	}
@@ -50,7 +50,7 @@ func TestUpdateUser(t *testing.T) {
 		Password:    "password123",
 	}
 
-	err := user.CreateUser(user)
+	err := user.RegisterUser(user)
 	if err != nil {
 		t.Fatalf("CreateUser failed: %v", err)
 	}
@@ -80,7 +80,7 @@ func TestDeleteUser(t *testing.T) {
 		Password:    "password123",
 	}
 
-	err := user.CreateUser(user)
+	err := user.RegisterUser(user)
 	if err != nil {
 		t.Fatalf("CreateUser failed: %v", err)
 	}
@@ -105,7 +105,7 @@ func TestCreateAndDeleteRefreshToken(t *testing.T) {
 		Password:    "password123",
 	}
 
-	err := user.CreateUser(user)
+	err := user.RegisterUser(user)
 	if err != nil {
 		t.Fatalf("CreateUser failed: %v", err)
 	}

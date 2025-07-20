@@ -36,7 +36,8 @@ func main() {
 	}
 	defer config.DbConn.Close()
 
-	// Initialize user handler
+	// Initialize handlers
+	authHandler := handlers.NewAuthHandler(&models.User{})
 	userHandler := handlers.NewUserHandler(&models.User{})
 
 	// Initialize JWT middleware
@@ -49,12 +50,12 @@ func main() {
 	limiter := utils.NewRateLimiter(rate.Limit(config.AppConfig.RateLimitRPS), config.AppConfig.RateLimitBurst)
 
 	// Auth routes
-	router.Handle("/login", utils.RateLimitMiddleware(limiter)(http.HandlerFunc(userHandler.Login))).Methods("POST")
-	router.HandleFunc("/logout", utils.JWTMiddleware(userHandler.Logout)).Methods("POST")
-	router.Handle("/token/refresh", utils.RateLimitMiddleware(limiter)(http.HandlerFunc(userHandler.RefreshToken))).Methods("POST")
+	router.Handle("/auth/register", utils.RateLimitMiddleware(limiter)(http.HandlerFunc(authHandler.Register))).Methods("POST")
+	router.Handle("/auth/login", utils.RateLimitMiddleware(limiter)(http.HandlerFunc(authHandler.Login))).Methods("POST")
+	router.Handle("/auth/refresh_token", utils.RateLimitMiddleware(limiter)(http.HandlerFunc(authHandler.RefreshToken))).Methods("POST")
+	router.HandleFunc("/auth/logout", utils.JWTMiddleware(authHandler.Logout)).Methods("POST")
 
 	// user routes
-	router.Handle("/users", utils.RateLimitMiddleware(limiter)(http.HandlerFunc(userHandler.CreateUsers))).Methods("POST")
 	router.Handle("/users", utils.JWTMiddleware(userHandler.GetUsers)).Methods("GET")
 	router.Handle("/users/{id}", utils.JWTMiddleware(userHandler.GetUser)).Methods("GET")
 	router.Handle("/users/{id}", utils.JWTMiddleware(userHandler.UpdateUser)).Methods("PUT")
