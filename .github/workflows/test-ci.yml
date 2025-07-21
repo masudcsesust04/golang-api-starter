@@ -9,8 +9,6 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    services:
-      # Uncomment the following lines if you need a any dependent service
     env:
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
 
