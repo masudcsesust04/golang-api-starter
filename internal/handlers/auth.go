@@ -34,7 +34,7 @@ type LoginResponse struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
-var jwtKey = []byte(os.Getenv("JWT_SECRET")) // Replace with your secret key
+var jwtKey = []byte(os.Getenv("JWT_SECRET"))
 
 // Claims represents the JWT claims
 type Claims struct {

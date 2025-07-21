@@ -22,7 +22,7 @@ func TestRegister(t *testing.T) {
 
 	user := &models.User{FirstName: "New", LastName: "User", Email: "new@example.com", Password: "password123", Status: "active", PhoneNumber: "+1234567890"}
 
-	mockDB.On("CreateUser", user).Return(nil)
+	mockDB.On("RegisterUser", user).Return(nil)
 
 	jsonBody, _ := json.Marshal(user)
 	req := httptest.NewRequest("POST", "/users", bytes.NewBuffer(jsonBody))
