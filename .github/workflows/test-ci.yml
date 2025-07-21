@@ -1,0 +1,30 @@
+name: Go CI Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      # Uncomment the following lines if you need a any dependent service
+    env:
+      JWT_SECRET: ${{ secrets.JWT_SECRET }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.23.2'
+
+      - name: Install dependencies
+        run: go mod download
+      
+      - name: Run Tests
+        run: go test ./... -v
